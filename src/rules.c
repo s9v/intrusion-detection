@@ -108,6 +108,11 @@ void test_rule_parsing(void) {
             "and SSH server ports\";)"
     };
 
+    for (int i = 0; i <= 10; i++) {
+        printf("// %d\n%s\n", i, test_strs[i]);
+    }
+    ERR("===============================\n");
+
     char *rule_str = test_strs[5];
     
     ERR("rule str:\n  <%s>\n", rule_str);

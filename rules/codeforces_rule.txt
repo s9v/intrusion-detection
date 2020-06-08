@@ -1,0 +1,1 @@
+alert tcp any any -> 81.27.240.126 any (msg:"codeforces.com/profile/accidentallygivenfuck detected"; flags:PA; content:"accidentallygivenfuck"; len:20; tos:0;)

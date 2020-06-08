@@ -1,3 +1,4 @@
+#pragma once
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -7,6 +8,8 @@
 #include "helpers.h"
 
 #define MAX_PORT_NO 65535
+#define RULES_BUFSIZ 128
+#define LINE_BUFSIZ 512
 
 enum action { ACTION_ALERT };
 enum protocol { PROTO_TCP, PROTO_UDP, PROTO_HTTP };
@@ -28,17 +31,18 @@ struct ports {
 enum tcp_flag { FLAG_FIN, FLAG_SYN, FLAG_RST, FLAG_PSH, FLAG_ACK };
 struct options {
     char *msg;
-    int tos;
-    int len;
-    int offset;
-    int seq;
-    int ack;
-    int flags; // TODO if this is changed, fix options_default
+    uint32_t tos;
+    uint32_t len;
+    uint32_t offset;
+    uint64_t seq;
+    uint64_t ack;
+    uint32_t flags; // TODO if this is changed, fix options_default
     char *http_request;
     char *content;
 } options_default = {NULL, -1, -1, -1, -1, -1, 0, NULL, NULL};
 
 struct rule {
+    char *str; // original rule string
     enum action action;
     enum protocol protocol;
     struct ip_addr src_addr;
@@ -48,6 +52,9 @@ struct rule {
     struct options options;
 };
 
+int num_rules;
+struct rule rules[RULES_BUFSIZ];
+
 char *dup_range(const char *src, int start, int end);
 int parse_rule(const char *rule_str, struct rule *rule);
 int parse_action(const char *s, enum action *action);
@@ -55,6 +62,45 @@ int parse_protocol(const char *s, enum protocol *protocol);
 int parse_ip(const char *s, struct ip_addr *ip);
 int parse_ports(const char *s, struct ports *ports);
 int parse_option(const char *s, struct options *options);
+
+/* Utility functions */
+
+int read_rules(const char *rules_filename, int *num_rules_read,
+        int *num_rules_ignored) {
+    // Init variables
+    num_rules = 0;
+    *num_rules_read = 0;
+    *num_rules_ignored = 0;
+
+    // Open rules file
+    FILE *frules;
+    if ((frules = fopen(rules_filename, "r")) == NULL) {
+        ERR("error: can't open frules\n");
+        return -1;
+    }
+
+    // Read and parse lines of rules
+    size_t buff_len = LINE_BUFSIZ;
+    char *line = malloc(buff_len);
+    int nread;
+    while ((nread = getline(&line, &buff_len, frules)) >= 0) {
+        if (nread > 0 && line[nread-1] == '\n')
+            line[nread-1] = '\0';
+
+        *num_rules_read += 1;
+
+        ERR("=[ LINE #%03d ]======================\n", *num_rules_read);
+        ERR("%s\n\n", line);
+        if (parse_rule(line, rules + num_rules) < 0) {
+            *num_rules_ignored += 1;
+        } else {
+            num_rules++;
+        }
+        ERR("===================================\n");
+    }
+
+    return 0;
+}
 
 /* Helper functions */
 
@@ -69,7 +115,16 @@ char *dup_range(const char *src, int start, int end) {
 
 // Nicer strtol() version, returns -1 on error.
 // Parses S and stores the number to N.
+int temp_n;
+long long temp_nn;
+
 int nicer_strtol(const char *s, int *n) {
+    errno = 0;
+    *n = strtol(s, NULL, 0);
+    return errno < 0 ?-1 :0;
+}
+
+int nicer_strtoll(const char *s, long long *n) {
     errno = 0;
     *n = strtol(s, NULL, 0);
     return errno < 0 ?-1 :0;
@@ -95,7 +150,8 @@ void strip_space(char *s) {
 
 /* Actual parsing functions */
 
-// Returns -1 on error.
+// Parses rule struct from given string.
+// Returns -1 on invalid syntax.
 int parse_rule(const char *rule_str, struct rule *rule) {
     enum state {
         SPACE1, ACTION,
@@ -112,8 +168,14 @@ int parse_rule(const char *rule_str, struct rule *rule) {
     };
     enum state state = SPACE1;
 
+    // Copy rule string
+    rule->str = malloc(strlen(rule_str) + 1);
+    strcpy(rule->str, rule_str);
+
+    // Init rule options
     rule->options = options_default;
 
+    // Parse rule
     int len = strlen(rule_str);
     int last = 0;
     for (int i = 0; i < len; i++) {
@@ -503,11 +565,11 @@ int parse_ports(const char *s, struct ports *ports) {
 
             // first token => from
             char *tok = strtok(ss, delim);
-
-            if (tok == NULL || nicer_strtol(tok, &ports->from) < 0) {
+            if (tok == NULL || nicer_strtol(tok, &temp_n) < 0) {
                 free(ss);
                 return -1;
             }
+            ports->from = temp_n;
 
             // second token => to
             tok = strtok(NULL, delim);
@@ -524,10 +586,11 @@ int parse_ports(const char *s, struct ports *ports) {
                     ports->to = MAX_PORT_NO;
                 }
             } else {
-                if (nicer_strtol(tok, &ports->to) < 0) {
+                if (nicer_strtol(tok, &temp_n) < 0) {
                     free(ss);
                     return -1;
                 }
+                ports->to = temp_n;
             }
         }
     }
@@ -586,26 +649,26 @@ int parse_option(const char *s, struct options *options) {
     if (strcmp(optname, "msg") == 0) {
         options->msg = optval_str;
     } else if (strcmp(optname, "tos") == 0) {
-        if (nicer_strtol(optval, &options->tos) < 0) {
+        if (nicer_strtol(optval, &temp_n) < 0)
             invalid = true;
-        }
+        options->tos = temp_n;
     } else if (strcmp(optname, "len") == 0) {
-        if (nicer_strtol(optval, &options->len) < 0) {
+        if (nicer_strtol(optval, &temp_n) < 0)
             invalid = true;
-        }
+        options->len = temp_n;
     } else if (strcmp(optname, "offset") == 0) {
-        if (nicer_strtol(optval, &options->offset) < 0) {
+        if (nicer_strtol(optval, &temp_n) < 0)
             invalid = true;
-        }
+        options->offset = temp_n;
     } else if (strcmp(optname, "seq") == 0) {
-        if (nicer_strtol(optval, &options->seq) < 0) {
+        if (nicer_strtoll(optval, &temp_nn) < 0)
             invalid = true;
-        }
+        options->seq = temp_nn;
     } else if (strcmp(optname, "ack") == 0) {
-        if (nicer_strtol(optval, &options->ack) < 0) {
+        if (nicer_strtoll(optval, &temp_nn) < 0)
             invalid = true;
-        }
-    } else if (strcmp(optname, "flag") == 0) {
+        options->ack = temp_nn;
+    } else if (strcmp(optname, "flags") == 0) {
         options->flags = 0;
         int len = strlen(optval);
         for (int i = 0; i < len; i++) {
@@ -641,3 +704,4 @@ int parse_option(const char *s, struct options *options) {
     free(ss); // frees optval and optname
     return invalid ?-1 :0;
 }
+

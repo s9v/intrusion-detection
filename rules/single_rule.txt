@@ -1,0 +1,1 @@
+alert tcp any any -> 123.45.67.89 any (msg:"expect world war 3"; content:"byt")

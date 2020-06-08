@@ -1,0 +1,12 @@
+alert tcp 1.1.1.1 any -> 8.8.8.8 any (msg:"expect world war 3";)
+alert udp any any->any any(msg:"expect world war 3";)
+alert udp any 23,80,8000->any 8000:8888(msg:"expect world war 3";len:100;ack:45)
+alert udp any 23,80,8000 -> any 8000:8888 ( msg:"expect world war 3"; len:100; ack:45 )
+    alert     udp        192.0.2.235     23,80,8000    -> any   8000:8888     (       msg  : "expect world war 3" ; len  :  100             ;   ack  :  45              ; )     
+alert tcp 192.168.1.1 any -> 192.168.1.2 22 (content:"/bin/sh";msg:"Remote shell execution message!";)
+alert tcp any any -> 143.248.5.153 80 (msg:"A packet destined to www.kaist.ac.kr";)
+alert udp any any -> 192.168.1.1 1:1024 (msg:"udp traffic from any port and destination ports ranging from 1 to 1024";)
+alert tcp any any -> 192.168.1.1 :6000 (msg:"tcp traffic from any port going to ports less than or equal to 6000";)
+alert tcp any :1024 -> 192.168.1.1 500: (msg:"tcp traffic from privileged ports less than or equal to 1024 going to ports greater than or equal to 500:";)
+alert tcp any any -> any 80,22,21 (msg: "tcp traffic from any port going to Web, FTP, and SSH server ports";)
+

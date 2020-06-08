@@ -1,3 +1,5 @@
+#pragma once
+
 // https://stackoverflow.com/a/3586005/1857492
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"

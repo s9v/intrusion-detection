@@ -1,0 +1,1 @@
+alert udp any any -> 123.45.67.89 any (msg: "Commie detected!";)

@@ -1,0 +1,1 @@
+alert tcp 171.67.215.200 any -> any any (msg:"not even ivy league"; content:"Norvig")

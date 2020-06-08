@@ -1,0 +1,1 @@
+alert tcp any any -> any any (msg:"GET request detected"; http_request:"GET")

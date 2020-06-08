@@ -1,4 +1,6 @@
+#pragma once
 #include <assert.h>
+#include <stdlib.h>
 
 //struct hole_node;
 
@@ -9,13 +11,9 @@ struct hnode {
     struct hnode *next;
 };
 
-struct hlist {
-    struct hnode head;
-}
-
-void hlist_init(struct hlist *list) {
-    list->head.prev = NULL;
-    list->head.next = NULL;
+void hlist_init(struct hnode *list_head) {
+    list_head->prev = NULL;
+    list_head->next = NULL;
 }
 
 struct hnode *hlist_delete(struct hnode *node) {
@@ -28,7 +26,7 @@ struct hnode *hlist_delete(struct hnode *node) {
         node->next->prev = node->prev;
     node->prev->next = node->next;
 
-    hnode *next = node->next;
+    struct hnode *next = node->next;
     free(node);
     return next;
 }
@@ -44,7 +42,7 @@ struct hnode *hlist_new(int first, int last) {
     return new_node;
 }
 
-struct hnode *hlist_add(struct hnode *after, struct hnode *new_node) {
+struct hnode *hlist_insert(struct hnode *after, struct hnode *new_node) {
     assert(after != NULL);
     assert(new_node != NULL);
 

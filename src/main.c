@@ -1,31 +1,46 @@
 #include <stdio.h>
-#include <stdint.h>
-#include "packet.h"
+#include <stdlib.h>
+#include "rules.h"
+#include "colors.h"
+#include "capture.h"
 
 #define PKT_SIZE 1024
 
-int main()
-{
-    /* struct ether *eth_pkt; */
-    /* struct ip *ip_pkt; */
-    /* struct tcp *tcp_pkt; */
-    printf("ether size %lu\n", sizeof(struct ether));
-    printf("ether size %lu\n", sizeof(struct ip));
-    printf("ether size %lu\n", sizeof(struct tcp));
 
-    uint8_t pkt[PKT_SIZE];
-    int pkt_len = 0;
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Error: not enough parameters.\n"
+            "Usage: %s snort_rules_file\n", argv[0]);
+        return EXIT_FAILURE;
+    }
 
-    FILE *f = fopen("tcp_pkt", "rb");
+    int num_rules_read;
+    int num_rules_ignored;
+    if (read_rules(argv[1], &num_rules_read, &num_rules_ignored) < 0) {
+        fprintf(stderr, "Error: can't open %s\n", argv[1]);
+        return EXIT_FAILURE;
+    }
 
-    char c;
-    while ((c = fgetc(f)) != EOF)
-        pkt[pkt_len++] = c;
+    if (num_rules_ignored > 0) {
+        printf("Rules:  num valid (%d/%d),  "KRED"num invalid (%d)"KRST"\n",
+            num_rules_read - num_rules_ignored,
+            num_rules_read, num_rules_ignored);
+    } else {
+        printf("Rules:  num valid (%d/%d),  num invalid (%d)\n",
+            num_rules_read - num_rules_ignored,
+            num_rules_read, num_rules_ignored);
+    }
+
+    assert(num_rules_read >= num_rules_ignored);
+    if (num_rules_read - num_rules_ignored == 0) {
+        printf("No valid rules. Exiting...\n");
+        return 0;
+    }
     
-    for (int i = 0; i < pkt_len; i++) {
-        printf("%x ", pkt[i]);
-        if (i%16 == 15)
-            printf("\n");
+    printf("Waiting for captured packets...\n");
+    if (start_pkt_capture() < 0) {
+        fprintf(stderr, "Error: can't init packet capture");
+        return EXIT_FAILURE;
     }
 
     return 0;
