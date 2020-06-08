@@ -33,7 +33,7 @@ void free_part(int idx);
 //
 
 // Partials
-#define NUM_PARTS 128
+#define NUM_PARTS 1024
 int ids[NUM_PARTS] = {0};
 bool used[NUM_PARTS] = {0};
 struct ip_part parts[NUM_PARTS];
