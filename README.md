@@ -1,4 +1,4 @@
-# Building and testinig
+# Building and testing
 
 To build and start packet capture:
 
@@ -15,7 +15,7 @@ Use Scapy scripts inside `scapy/` to send packets:
 
 # Hole Patching Algorithm for IP fragment reassembly
 
-See: https://tools.ietf.org/html/rfc815 
+See: https://tools.ietf.org/html/rfc815  
 It's simple and very efficient -- O(n);
 
 # Project structure
